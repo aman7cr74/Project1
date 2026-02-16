@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    environment {
+        VENV = "venv"
+    }
+
     stages {
 
         stage('Checkout') {
@@ -9,15 +13,29 @@ pipeline {
             }
         }
 
-        stage('Build') {
+        stage('Show Changes') {
             steps {
-                sh 'mvn clean package'
+                sh 'git diff --name-status HEAD~1 HEAD || echo "First build"'
             }
         }
 
-        stage('Archive Artifact') {
+        stage('Setup Environment') {
             steps {
-                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+                sh '''
+                python3 -m venv $VENV
+                source $VENV/bin/activate
+                pip install --upgrade pip
+                pip install -r requirements.txt
+                '''
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                sh '''
+                source $VENV/bin/activate
+                pytest
+                '''
             }
         }
     }
